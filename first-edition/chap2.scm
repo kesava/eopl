@@ -203,3 +203,29 @@
 
 (product '(a b c) '(x y))
 ; ((a x) (a y) (b x) (b y) (c x) (c y))
+
+(define swapper-se
+  (lambda (s1 s2 se)
+        (cond
+          ((equal? se s1) s2)
+          ((equal? se s2) s1)
+          (else se))))
+
+(define swapper
+  (lambda (s1 s2 slist)
+    (if (null? slist)
+        '()
+        (if (symbol? (car slist))
+            (cons (swapper-se s1 s2 (car slist)) (swapper s1 s2 (cdr slist)))
+            (cons (swapper s1 s2 (car slist)) (swapper s1 s2 (cdr slist)))))))
+
+(swapper 'a 'd '(a b c d))
+; (d b c a)
+
+(swapper 'x 'y '((x) y (z (x))))
+; ((y) x (z (y)))
+
+(define rotate
+  (lambda (los)
+    
+                     
