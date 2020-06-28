@@ -362,3 +362,66 @@
 
 (merge '(35 62 81 90 91) '(3 83 85 90))
 ; (3 35 62 81 83 85 90 90 91)
+
+; Exercise 2.2.9
+
+(define root
+  (lambda (bst)
+    (car bst)))
+
+(define l-branch
+  (lambda (bst)
+    (cadr bst)))
+
+(define r-branch
+  (lambda (bst)
+    (caddr bst)))
+
+(define path
+  (lambda (n bst)
+    (if (null? bst)
+        '()
+        (cond
+          ((equal? (root bst) n) '())
+          ((< n (root bst)) (cons 'L (path n (l-branch bst))))
+          ((> n (root bst)) (cons 'R (path n (r-branch bst))))))))
+
+(path 17 '(14 (7 () (12 () ())) (26 (20 (17 () ()) ()) (31 () ()))))
+; (R L L)
+
+(define car&cdr
+  (lambda (s slst errvalue)
+    (define helper-los
+      (lambda (los)
+        (if (null? los)
+            '()
+            (if (symbol? (car los))
+                (if (eq? (car los) s)
+                    (list 'cdr 'lst)
+                    (list 'cdr (helper-los (cdr los))))
+                (helper-lst los)))))
+      
+
+    (define helper-lst
+      (lambda (lst)
+        (if (null? lst)
+             '()
+             (if (null? (car lst))
+                 '()
+                 (if (list? (car lst))
+                     (append (list 'car) (cons (helper-los (car lst)) (helper-lst (cdr lst))))
+                     (if (equal? (car lst) s)
+                         (list (list 'car 'lst))
+                         (list (list 'car (helper-los (cdr lst))))))))))
+         
+    (cons 'lambda (cons (list 'lst) (helper-lst slst)))))
+
+(car&cdr 'a '(a b c) 'err)
+; (lambda (lst) (car lst))
+
+(car&cdr 'c '(a b c) 'err)
+; (lambda (lst) (car (cdr (cdr lst))))
+
+(car&cdr 'dog '(cst lion (fish dog)) 'fail)
+; (lambda (lst) (car (cdr (car (cdr (cdr lst))))))
+
