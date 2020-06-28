@@ -299,9 +299,11 @@
   (lambda (s los)
     (if (null? los)
         0
-        (if (equal? (car los) s)
-            (+ 1 (count-occurences-lst s (cdr los)))
-            (count-occurences-lst s (cdr los))))))
+        (if (list? (car los))
+            (count-occurences s (car los))
+            (if (equal? (car los) s)
+                (+ 1 (count-occurences-lst s (cdr los)))
+                (count-occurences-lst s (cdr los)))))))
 
 (define count-occurences
   (lambda (s slst)
@@ -312,3 +314,11 @@
                 (+ 1 (count-occurences s (cdr slst)))
                 (count-occurences s (cdr slst)))
             (+ (count-occurences-lst s (car slst)) (count-occurences s (cdr slst)))))))
+
+
+(count-occurences 'x '((f x) y (((x z) x))))
+; 3
+
+(count-occurences 'w '((f x) y (((x z) x))))
+; 0
+
