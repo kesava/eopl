@@ -225,7 +225,90 @@
 (swapper 'x 'y '((x) y (z (x))))
 ; ((y) x (z (y)))
 
-(define rotate
+(define rotate-left
   (lambda (los)
+    (if (null? los)
+        '()
+        (if (null? (cdr los))
+            los
+            (append (cdr los) (list (car los)))))))
+
+(rotate-left '(a b c d))
+; (b c d a)
+
+(define get-full-but-last
+  (lambda (lis)
+    (if (null? lis)
+        '()
+        (if (null? (cdr lis))
+            '()
+            (cons (car lis) (get-full-but-last (cdr lis)))))))
+
+(define get-last
+  (lambda (los)
+    (if (null? los)
+        '()
+        (if (null? (cdr los))
+            (car los)
+            (get-last (cdr los))))))
+
+(define rotate-right
+  (lambda (los)
+    (if (null? los)
+        '()
+        (cons (get-last los) (get-full-but-last los)))))
     
-                     
+(rotate-right '(a b c d))
+; (d a b c)
+
+(rotate-right '())
+; ()
+
+(rotate-right '(a))
+; (a)
+
+; Exercise 2.2.8
+
+(define down
+  (lambda (lst)
+    (if (null? lst)
+        '()
+        (cons (cons (car lst) '()) (down (cdr lst))))))
+
+(down '(a b))
+; ((a) (b))
+
+(down '(a (more (complicated)) object))
+; ((a) ((more (complicated))) (object))
+
+(define up
+  (lambda (lst)
+    (if (null? lst)
+        '()
+        (if (symbol? (car lst))
+            (cons (car lst) (up (cdr lst)))
+            (append (car lst) (up (cdr lst)))))))
+
+(up '((1 2) (3 4)))
+; (1 2 3 4)
+
+(up '((x (y)) z))
+; (x (y) z)
+
+(define count-occurences-lst
+  (lambda (s los)
+    (if (null? los)
+        0
+        (if (equal? (car los) s)
+            (+ 1 (count-occurences-lst s (cdr los)))
+            (count-occurences-lst s (cdr los))))))
+
+(define count-occurences
+  (lambda (s slst)
+    (if (null? slst)
+        0
+        (if (symbol? (car slst))
+            (if (eq? (car slst) s)
+                (+ 1 (count-occurences s (cdr slst)))
+                (count-occurences s (cdr slst)))
+            (+ (count-occurences-lst s (car slst)) (count-occurences s (cdr slst)))))))
