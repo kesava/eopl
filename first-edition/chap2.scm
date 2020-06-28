@@ -200,3 +200,6 @@
     (if (null? los1)
         '()
         (append (product-sym-slst (car los1) los2) (product (cdr los1) los2)))))
+
+(product '(a b c) '(x y))
+; ((a x) (a y) (b x) (b y) (c x) (c y))
