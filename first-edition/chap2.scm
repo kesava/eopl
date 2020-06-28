@@ -322,3 +322,43 @@
 (count-occurences 'w '((f x) y (((x z) x))))
 ; 0
 
+(define flatten-lst
+  (lambda (lst)
+    (if (null? lst)
+        '()
+        (if (list? (car lst))
+            (append (flatten (car lst)) (flatten-lst (cdr lst)))
+            (cons (car lst) (flatten-lst (cdr lst)))))))
+
+(define flatten
+  (lambda (slst)
+    (if (null? slst)
+        '()
+        (if (symbol? (car slst))
+            (cons (car slst) (flatten (cdr slst)))
+            (append (flatten-lst (car slst)) (flatten (cdr slst)))))))
+
+(flatten '(a b c))
+; (a b c)
+
+(flatten '((a b) c (((d)) e)))
+; (a b c d e)
+
+(flatten '(a b (() (c))))
+; (a b c)
+
+
+(define merge
+  (lambda (lon1 lon2)
+    (cond
+      ((null? lon1) lon2)
+      ((null? lon2) lon1)
+      ((<= (car lon1) (car lon2)) (cons (car lon1) (merge (cdr lon1) lon2)))
+      ((> (car lon1) (car lon2)) (cons (car lon2) (merge lon1 (cdr lon2))))
+      (else '()))))
+
+(merge '(1 2 4 5) '(2 4 8))
+; (1 2 2 4 4 5 8)
+
+(merge '(35 62 81 90 91) '(3 83 85 90))
+; (3 35 62 81 83 85 90 90 91)
