@@ -174,3 +174,29 @@
 
 (ribassoc 'i '(a i o i) '#(fx (fz) () (fm fe)) 'fail)
 ; (fz)
+
+(define filter-in
+  (lambda (p lst)
+    (if (null? lst)
+        '()
+        (if (p (car lst))
+            (cons (car lst) (filter-in p (cdr lst)))
+            (filter-in p (cdr lst))))))
+
+(filter-in number? '(a 2 (1 3) b 7))
+; (2 7)
+
+(filter-in symbol? '(a (b c) 17 foo))
+; (a foo)
+
+(define product-sym-slst
+  (lambda (s slst)
+    (if (null? slst)
+        '()
+        (cons (list s (car slst)) (product-sym-slst s (cdr slst))))))
+
+(define product
+  (lambda (los1 los2)
+    (if (null? los1)
+        '()
+        (append (product-sym-slst (car los1) los2) (product (cdr los1) los2)))))
