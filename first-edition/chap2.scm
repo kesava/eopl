@@ -389,6 +389,7 @@
 (path 17 '(14 (7 () (12 () ())) (26 (20 (17 () ()) ()) (31 () ()))))
 ; (R L L)
 
+
 (define car&cdr
   (lambda (s slst errvalue)
     (define helper-los
@@ -425,3 +426,33 @@
 (car&cdr 'dog '(cst lion (fish dog)) 'fail)
 ; (lambda (lst) (car (cdr (car (cdr (cdr lst))))))
 
+
+; I seem to have hit the wall on two things -
+
+; (a) how to workout the `errValue` without a preemptive full lookup, before i start building the procedure.
+; ```(car&cdr 'a '(f b c) 'err)
+; (lambda (lst) (car (cdr (cdr ()))))   <--- this should be 'err```
+
+; (b) how to abort constructing lookup into a unsuccessful sublist.
+; ```(car&cdr 'dog '(cst lion (fish dog) pig) 'fail)
+; (lambda (lst) (car (cdr (car (cdr (cdr lst)) (car ())))))    <--- the last (car()) shouldn't appear.```
+
+; This is probably trivial for many on this channel. Deeply appreciate any insights.
+
+; need to fix this.
+(define compose
+  (lambda (p1)
+    
+    (define identity
+      (lambda (identity) identity))
+    
+    (define compose-helper
+      (lambda (lst)
+        (if (null? lst)
+            identity
+            ((car lst) (list (compose-helper (cdr lst)))))))
+        
+    (if (null? p1)
+        identity
+        (list p1 (compose-helper '())))))
+        
