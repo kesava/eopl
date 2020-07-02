@@ -390,7 +390,7 @@
 ; (R L L)
 
 
-(define car&cdr
+(define car&cdr0
   (lambda (s slst errvalue)
     (define helper-los
       (lambda (los)
@@ -417,13 +417,13 @@
          
     (cons 'lambda (cons (list 'lst) (helper-lst slst)))))
 
-(car&cdr 'a '(a b c) 'err)
+(car&cdr0 'a '(a b c) 'err)
 ; (lambda (lst) (car lst))
 
-(car&cdr 'c '(a b c) 'err)
+(car&cdr0 'c '(a b c) 'err)
 ; (lambda (lst) (car (cdr (cdr lst))))
 
-(car&cdr 'dog '(cst lion (fish dog)) 'fail)
+(car&cdr0 'dog '(cst lion (fish dog)) 'fail)
 ; (lambda (lst) (car (cdr (car (cdr (cdr lst))))))
 
 
@@ -437,9 +437,52 @@
 ; ```(car&cdr 'dog '(cst lion (fish dog) pig) 'fail)
 ; (lambda (lst) (car (cdr (car (cdr (cdr lst)) (car ())))))    <--- the last (car()) shouldn't appear.```
 
-; This is probably trivial for many on this channel. Deeply appreciate any insights.
 
-; need to fix this.
+; Improved version with three interesting techniques.
+; a) or to backtrack
+; b) accum to make it tail recursive
+; c) accum-stack to backtrack from a sublist and continue with the rest of the list
+
+(define car&cdr
+  (lambda (s slst errvalue)
+   (define pop-accum-stack
+      (lambda (lst)
+        (cond
+          ((null? lst) '())
+          ((list? (car lst)) (list 'cdr (car (car lst))))
+          (else (pop-accum-stack (cdr lst))))))
+    (define helper
+      (lambda (lst sigil rest-list accum-stack accum)
+        (cond
+          ((null? lst) (if (null? rest-list)
+                            '()
+                           (helper rest-list sigil '() (pop-accum-stack accum-stack) (pop-accum-stack accum-stack)))) ; reset accumulator
+          ((equal? sigil (car lst)) (list 'car accum))
+          (else (or
+                 (if (list? (car lst))
+                   (helper (car lst) sigil (cdr lst) (cons accum-stack '()) (list 'car accum))
+                   #f)
+                 (helper (cdr lst) sigil rest-list (list 'cdr accum-stack) (list 'cdr accum)))))))
+     (let ([result (helper slst s '() 'x 'x)])
+       (if (list? result)
+           (list 'lambda (list 'x) result)
+           errvalue))))
+
+(car&cdr 'a '(a b c) 'err)
+; (lambda (x) (car x))
+
+(car&cdr 'c '(a b c) 'err)
+; (lambda (x) (car (cdr (cdr x))))
+
+(car&cdr 'dog '(cst lion (fish dog)) 'fail)
+; (lambda (x) (car (cdr (car (cdr (cdr x))))))
+
+(car&cdr 'dog '(cst lion (fish dog) pig) 'fail)
+; (lambda (x) (car (cdr (car (cdr (cdr x))))))
+
+(car&cdr 'horse '(cst lion (fish) horse dog) 'fail)
+; (lambda (x) (car (cdr (cdr (cdr x)))))
+
 (define compose
   (lambda (p1)
     
