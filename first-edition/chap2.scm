@@ -1,4 +1,5 @@
 #lang eopl
+(require racket/trace)
 
 (define remove-first
   (lambda (s los)
@@ -445,24 +446,31 @@
 
 (define car&cdr
   (lambda (s slst errvalue)
-   (define pop-accum-stack
+    
+   (define pop-stack
       (lambda (lst)
         (cond
           ((null? lst) '())
           ((list? (car lst)) (list 'cdr (car (car lst))))
-          (else (pop-accum-stack (cdr lst))))))
+          (else (pop-stack (cdr lst))))))
+    
+    (define push-stack
+      (lambda (lst)
+        (cons lst '())))
+ 
     (define helper
       (lambda (lst sigil rest-list accum-stack accum)
         (cond
           ((null? lst) (if (null? rest-list)
                             '()
-                           (helper rest-list sigil '() (pop-accum-stack accum-stack) (pop-accum-stack accum-stack)))) ; reset accumulator
+                           (helper rest-list sigil '() (pop-stack accum-stack) (pop-stack accum-stack)))) ; reset accumulator
           ((equal? sigil (car lst)) (list 'car accum))
           (else (or
                  (if (list? (car lst))
-                   (helper (car lst) sigil (cdr lst) (cons accum-stack '()) (list 'car accum))
+                   (helper (car lst) sigil (cdr lst) (push-stack accum-stack) (list 'car accum))
                    #f)
                  (helper (cdr lst) sigil rest-list (list 'cdr accum-stack) (list 'cdr accum)))))))
+    
      (let ([result (helper slst s '() 'x 'x)])
        (if (list? result)
            (list 'lambda (list 'x) result)
@@ -499,3 +507,43 @@
         identity
         (list p1 (compose-helper '())))))
         
+
+; Some helpers
+    (define any?
+      (lambda (ele lst)
+        (cond
+          ((null? lst) #f)
+          ((eq? (car lst) ele) #t)
+          (else (any? ele (cdr lst))))))
+
+(define filter
+  (lambda (lst check-fn)
+    (define helper
+      (lambda (lst acc)
+        (cond
+          ((null? lst) (reverse acc))
+          ((check-fn (car lst)) (helper (cdr lst) (cons (car lst) acc)))
+          (else (helper (cdr lst) acc)))))
+    (helper lst '())))
+
+; Exercise 2.3.1
+(define free-vars
+  (lambda (l-exp)
+    (define vars-part
+      (lambda (exp)
+        (car (cdr exp))))
+    (define exp-part
+      (lambda (exp)
+         (car (cdr (cdr exp)))))
+    (let ((e-part (exp-part l-exp)) (v-part (vars-part l-exp)))
+      (define helper
+        (lambda (exp acc)
+          (cond
+            ((null? exp) acc)
+            ((any? (car exp) v-part) (helper (cdr exp) acc))
+            (else (helper (cdr exp) (cons (car exp) acc))))))
+       (helper e-part '()))))
+
+(free-vars '(lambda (x) (x y z)))
+; (z y)
+
