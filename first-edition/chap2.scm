@@ -509,25 +509,39 @@
         
 
 ; Some helpers
-    (define any?
-      (lambda (ele lst)
-        (cond
-          ((null? lst) #f)
-          ((eq? (car lst) ele) #t)
-          (else (any? ele (cdr lst))))))
+(define identity
+  (lambda (x) x))
 
-(define filter
+(define any?
   (lambda (lst check-fn)
     (define helper
       (lambda (lst acc)
         (cond
-          ((null? lst) (reverse acc))
-          ((check-fn (car lst)) (helper (cdr lst) (cons (car lst) acc)))
+          ((null? lst) #f)
+          ((check-fn (car lst)) #t)
           (else (helper (cdr lst) acc)))))
     (helper lst '())))
 
-; Exercise 2.3.1
-(define free-vars
+(define reduce
+  (lambda (lst fn acc)
+    (cond
+      ((null? lst) acc)
+      (else (reduce (cdr lst) fn (fn (car lst) acc))))))
+
+(define append-unique
+  (lambda (lst1 lst2)
+    (define collector
+      (lambda (lst1 lst2 acc)
+        (cond
+          ((null? lst1) (append (reverse acc) lst2))
+          ((null? lst2) (append lst1 acc))
+          ((memq (car lst1) lst2)
+           (collector (cdr lst1) lst2 acc))
+          (else (collector (cdr lst1) lst2 (cons (car lst1) acc))))))
+    (collector lst1 lst2 '())))
+
+
+(define old-free-vars
   (lambda (l-exp)
     (define vars-part
       (lambda (exp)
@@ -540,10 +554,83 @@
         (lambda (exp acc)
           (cond
             ((null? exp) acc)
-            ((any? (car exp) v-part) (helper (cdr exp) acc))
+            ((any? v-part (lambda (x) (eq? (car exp) x))) (helper (cdr exp) acc))
             (else (helper (cdr exp) (cons (car exp) acc))))))
        (helper e-part '()))))
 
-(free-vars '(lambda (x) (x y z)))
+(old-free-vars '(lambda (x) (x y z)))
 ; (z y)
 
+(define occurs-free?
+  (lambda (var exp)
+    (cond
+      ((symbol? exp) (eq? var exp))
+      ((eq? (car exp) 'lambda)
+       (and (not (eq? (caadr exp) var))
+            (occurs-free? var (caddr exp))))
+      (else (any? exp (lambda (x) (occurs-free? var x)))))))
+
+(occurs-free? 'x '(lambda (y) (+ c (lambda (z) (+ v b)))))
+; #f
+
+(occurs-free? 'x '(lambda (y) (+ c (lambda (z) (+ v x)))))
+; #t
+
+(occurs-free? 'x '(lambda (y) (+ c (lambda (x) (+ v x)))))
+; #f
+
+(define occurs-bound?
+  (lambda (var exp)
+    (cond
+      ((symbol? exp) #f)
+      ((eq? (car exp) 'lambda)
+       (or (occurs-bound? var (caddr exp))
+           (and (eq? (caadr exp) var)
+            (occurs-free? var (caddr exp)))))
+      (else (any? exp (lambda (x) (occurs-bound? var x)))))))
+
+(occurs-bound? 'x '(lambda (x) (+ x y)))
+; #t
+
+(occurs-bound? 'y '(lambda (x) (+ x y)))
+; #f
+
+(occurs-bound? 'x '(lambda (y) (+ c (lambda (x) (+ v x)))))
+; #t
+
+(define extract-vars
+  (lambda (exp)
+    (define collector
+      (lambda (exp vars)
+        (cond
+          ((symbol? exp)
+           (if (memq exp vars)
+               vars
+               (cons exp vars)))
+          ((eq? (car exp) 'lambda)
+           (collector (caddr exp) vars))
+          ; a bug in the following line
+          ; a) need to collect unique vars
+          (else (flatten (apply append (map (lambda (x) (collector x vars)) exp)))))))
+    (collector exp '())))
+
+; Exercise 2.3.1
+(define free-vars
+  (lambda (l-exp)
+    (filter-in (lambda (x) (occurs-free? x l-exp)) (extract-vars l-exp))))
+
+(free-vars '(lambda (x) (x y z)))
+; (y z)
+
+(free-vars '(lambda (y) (z c (lambda (x) (y v x)))))
+; (z c v)
+
+(define bound-vars
+  (lambda (l-exp)
+    (filter-in (lambda (x) (occurs-bound? x l-exp)) (extract-vars l-exp))))
+
+(bound-vars '(lambda (x) (x y)))
+; (x)
+
+(bound-vars '(lambda (y) (z c (lambda (x) (y v x)))))
+; (y x)
