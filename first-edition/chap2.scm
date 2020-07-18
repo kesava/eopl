@@ -671,7 +671,7 @@
     (define helper
       (lambda (plists depth)
         (cond
-          ((null? plists) -1)
+          ((null? plists) (list '() -1))
           ((> (find-position v (car plists)) -1) (list depth (find-position v (car plists))))
           (else (helper (cdr plists) (+ depth 1))))))
     (helper plists 0)))
@@ -699,7 +699,7 @@
       (lambda (plists exp)
         (list 'lambda (car plists) (exp-helper plists exp))))
     
-    (exp-helper (list (list 'eq '+ '<)) exp)))
+    (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
 
 (lexical-address '(lambda (a b) (a b)))
 ; (lambda (a b) ((a : 0 0) (b : 0 1)))
@@ -712,3 +712,6 @@
 
 (lexical-address '(lambda (a b) (+ (if (< a b) a b) (lambda (a) (a b)))))
 ; (lambda (a b) ((+ : 1 1) if ((< : 1 2) (a : 0 0) (b : 0 1) (a : 0 0) (b : 0 1)) lambda (a) ((a : 0 0) (b : 1 1))))
+
+(lexical-address '(lambda (a b c) (if (eq? b c) ((lambda (c) (cons a c)) a) b)))
+; (lambda (a b c) (if ((eq? : 1 0) (b : 0 1) (c : 0 2) lambda (c) ((cons : 2 1) (a : 1 0) (c : 0 0)) (a : 0 0) (b : 0 1))))
