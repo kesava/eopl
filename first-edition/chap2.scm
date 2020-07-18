@@ -683,11 +683,11 @@
            (else (append (exp-helper plist (car exp) depth-level) (exp-helper plist (cdr exp) depth-level))))))
     (define if-helper
       (lambda (pred then-exp else-exp depth-level plist)
-        (append (map (lambda (x) (varref-helper x depth-level (find-position x plist))) pred)
-                (map (lambda (x) (varref-helper x depth-level (find-position x plist))) then-exp)
-                (map (lambda (x) (varref-helper x depth-level (find-position x plist))) else-exp))))
+        (list 'if (append (exp-helper plist pred depth-level)
+                (exp-helper plist then-exp depth-level)
+                (exp-helper plist else-exp depth-level)))))
     (define lambda-helper
       (lambda (plist exp depth-level)
         (list 'lambda plist (exp-helper plist exp depth-level))))
     
-    (exp-helper '(cons eq +) exp 0)))
+    (exp-helper '(cons eq + <) exp 0)))
