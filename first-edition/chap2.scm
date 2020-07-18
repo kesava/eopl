@@ -666,28 +666,49 @@
           (else (helper (+ position 1) (cdr lst))))))
     (helper 0 lst)))
 
+(define find-pd-from-plists
+  (lambda (v plists)
+    (define helper
+      (lambda (plists depth)
+        (cond
+          ((null? plists) -1)
+          ((> (find-position v (car plists)) -1) (list depth (find-position v (car plists))))
+          (else (helper (cdr plists) (+ depth 1))))))
+    (helper plists 0)))
 
 ; Exercise 2.3.10
 (define lexical-address
   (lambda (exp)
     (define varref-helper
-      (lambda (v d p)
-        (list (list v ': d p))))
+      (lambda (v dp-pair)
+        (list (list v ': (car dp-pair) (cadr dp-pair)))))
     (define exp-helper
-      (lambda (plist exp depth-level)
+      (lambda (plists exp)
          (cond
            ((null? exp) '())
-           ((symbol? exp) (varref-helper exp depth-level (find-position exp plist)))
-           ((eq? (car exp) 'lambda) (lambda-helper (append (cadr exp) plist) (caddr exp) (+ depth-level 1)))
-           ((eq? (car exp) 'if) (if-helper (cadr exp) (caddr exp) (cadddr exp) depth-level plist))
-           (else (append (exp-helper plist (car exp) depth-level) (exp-helper plist (cdr exp) depth-level))))))
+           ((symbol? exp) (varref-helper exp (find-pd-from-plists exp plists)))
+           ((eq? (car exp) 'lambda) (lambda-helper (cons (cadr exp) plists) (caddr exp)))
+           ((eq? (car exp) 'if) (if-helper (cadr exp) (caddr exp) (cadddr exp) plists))
+           (else (append (exp-helper plists (car exp)) (exp-helper plists (cdr exp)))))))
     (define if-helper
-      (lambda (pred then-exp else-exp depth-level plist)
-        (list 'if (append (exp-helper plist pred depth-level)
-                (exp-helper plist then-exp depth-level)
-                (exp-helper plist else-exp depth-level)))))
+      (lambda (pred then-exp else-exp plists)
+        (list 'if (append (exp-helper plists pred)
+                (exp-helper plists then-exp)
+                (exp-helper plists else-exp)))))
     (define lambda-helper
-      (lambda (plist exp depth-level)
-        (list 'lambda plist (exp-helper plist exp depth-level))))
+      (lambda (plists exp)
+        (list 'lambda (car plists) (exp-helper plists exp))))
     
-    (exp-helper '(cons eq + <) exp 0)))
+    (exp-helper (list (list 'eq '+ '<)) exp)))
+
+(lexical-address '(lambda (a b) (a b)))
+; (lambda (a b) ((a : 0 0) (b : 0 1)))
+
+(lexical-address '(lambda (a b) (+ (if (< a b) a b) a)))
+; (lambda (a b) ((+ : 1 1) if ((< : 1 2) (a : 0 0) (b : 0 1) (a : 0 0) (b : 0 1)) (a : 0 0)))
+
+(lexical-address '(lambda (a b) (+ (if (< a b) a b) (lambda (a) (a)))))
+; (lambda (a b) ((+ : 1 1) if ((< : 1 2) (a : 0 0) (b : 0 1) (a : 0 0) (b : 0 1)) lambda (a) ((a : 0 0))))
+
+(lexical-address '(lambda (a b) (+ (if (< a b) a b) (lambda (a) (a b)))))
+; (lambda (a b) ((+ : 1 1) if ((< : 1 2) (a : 0 0) (b : 0 1) (a : 0 0) (b : 0 1)) lambda (a) ((a : 0 0) (b : 1 1))))
