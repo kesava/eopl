@@ -634,3 +634,60 @@
 
 (bound-vars '(lambda (y) (z c (lambda (x) (y v x)))))
 ; (y x)
+
+; Exercse 2.3.6
+(define occurs-free-with-if?
+  (lambda (var exp)
+    (cond
+      ((symbol? exp) (eq? var exp))
+      ((eq? (car exp) 'if)
+       (or (occurs-free-with-if? var (car exp))
+            (occurs-free-with-if? var (cadr exp))
+            (occurs-free-with-if? var (caddr exp))))
+      ((eq? (car exp) 'lambda)
+       (and (not (eq? (caadr exp) var))
+            (occurs-free-with-if? var (caddr exp))))
+      (else (any? exp (lambda (x) (occurs-free? var x)))))))
+
+(occurs-free-with-if? 'z '(if x (lambda (y) z) x))
+; #t
+(occurs-free-with-if? 'x '(if x (lambda (y) (y z))))
+; #t
+(occurs-free-with-if? 'y '(if x (lambda (y) (y z))))
+; #f
+
+(define find-position
+  (lambda (v lst)
+    (define helper
+      (lambda (position lst)
+        (cond
+          ((null? lst) -1)
+          ((eq? (car lst) v) position)
+          (else (helper (+ position 1) (cdr lst))))))
+    (helper 0 lst)))
+
+
+; Exercise 2.3.10
+(define lexical-address
+  (lambda (exp)
+    (define varref-helper
+      (lambda (v d p)
+        (list (list v ': d p))))
+    (define exp-helper
+      (lambda (plist exp depth-level)
+         (cond
+           ((null? exp) '())
+           ((symbol? exp) (varref-helper exp depth-level (find-position exp plist)))
+           ((eq? (car exp) 'lambda) (lambda-helper (append (cadr exp) plist) (caddr exp) (+ depth-level 1)))
+           ((eq? (car exp) 'if) (if-helper (cadr exp) (caddr exp) (cadddr exp) depth-level plist))
+           (else (append (exp-helper plist (car exp) depth-level) (exp-helper plist (cdr exp) depth-level))))))
+    (define if-helper
+      (lambda (pred then-exp else-exp depth-level plist)
+        (append (map (lambda (x) (varref-helper x depth-level (find-position x plist))) pred)
+                (map (lambda (x) (varref-helper x depth-level (find-position x plist))) then-exp)
+                (map (lambda (x) (varref-helper x depth-level (find-position x plist))) else-exp))))
+    (define lambda-helper
+      (lambda (plist exp depth-level)
+        (list 'lambda plist (exp-helper plist exp depth-level))))
+    
+    (exp-helper '(cons eq +) exp 0)))
