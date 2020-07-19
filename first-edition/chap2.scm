@@ -715,3 +715,48 @@
 
 (lexical-address '(lambda (a b c) (if (eq? b c) ((lambda (c) (cons a c)) a) b)))
 ; (lambda (a b c) (if ((eq? : 1 0) (b : 0 1) (c : 0 2) lambda (c) ((cons : 2 1) (a : 1 0) (c : 0 0)) (a : 0 0) (b : 0 1))))
+
+(define lookup-in-list
+  (lambda (p lst)
+    (cond
+      ((null? lst) 'nf)
+      ((eq? p 0) (car lst))
+      (else (lookup-in-list (- p 1) (cdr lst))))))
+
+(define pd-pair?
+  (lambda (p)
+    (and (eq? (car p) ':)
+         (number? (cadr p))
+         (number? (caddr p)))))
+  
+
+; Exercise 2.3.12
+(define un-lexical-address
+  (lambda (exp)
+    (define varref-helper
+      (lambda (dp-pair plists)
+         (list (lookup-in-list (caddr dp-pair) (lookup-in-list (cadr dp-pair) plists)))))
+    (define exp-helper
+      (lambda (plists exp)
+         (cond
+           ((null? exp) '())
+           ((pd-pair? exp) (varref-helper exp plists))
+           ((eq? (car exp) 'lambda) (lambda-helper (cons (cadr exp) plists) (caddr exp)))
+           ((eq? (car exp) 'if) (if-helper (cadr exp) (caddr exp) (cadddr exp) plists))
+           (else (append (exp-helper plists (car exp)) (exp-helper plists (cdr exp)))))))
+    (define if-helper
+      (lambda (pred then-exp else-exp plists)
+        (list 'if (append (exp-helper plists pred)
+                (exp-helper plists then-exp)
+                (exp-helper plists else-exp)))))
+    (define lambda-helper
+      (lambda (plists exp)
+        (list 'lambda (car plists) (exp-helper plists exp))))
+    
+    (exp-helper '() exp)))
+
+(un-lexical-address '(lambda (b c) ((: 0 0) (: 0 1))))
+; (lambda (b c) (b c))
+
+(un-lexical-address '(lambda (a) (lambda (b c) ((: 1 0) (: 0 0) (: 0 1)))))
+; (lambda (a) (lambda (b c) (a b c)))
