@@ -561,6 +561,8 @@
 (old-free-vars '(lambda (x) (x y z)))
 ; (z y)
 
+;; THE CRUX OF THE CHAPTER STARTS FROM HERE
+
 (define occurs-free?
   (lambda (var exp)
     (cond
@@ -730,17 +732,17 @@
          (number? (caddr p)))))
   
 
-; Exercise 2.3.12
+; Exercise 2.3.13
 (define un-lexical-address
   (lambda (exp)
-    (define varref-helper
+    (define pdref-helper
       (lambda (dp-pair plists)
          (list (lookup-in-list (caddr dp-pair) (lookup-in-list (cadr dp-pair) plists)))))
     (define exp-helper
       (lambda (plists exp)
          (cond
            ((null? exp) '())
-           ((pd-pair? exp) (varref-helper exp plists))
+           ((pd-pair? exp) (pdref-helper exp plists))
            ((eq? (car exp) 'lambda) (lambda-helper (cons (cadr exp) plists) (caddr exp)))
            ((eq? (car exp) 'if) (if-helper (cadr exp) (caddr exp) (cadddr exp) plists))
            (else (append (exp-helper plists (car exp)) (exp-helper plists (cdr exp)))))))
@@ -760,3 +762,33 @@
 
 (un-lexical-address '(lambda (a) (lambda (b c) ((: 1 0) (: 0 0) (: 0 1)))))
 ; (lambda (a) (lambda (b c) (a b c)))
+
+(define replace-in-list
+  (lambda (new old lst)
+    (define helper
+      (lambda (acc lst)
+        (cond
+          ((null? lst) acc)
+          ((eq? (car lst) old) (append acc (list new) (cdr lst)))
+          (else (helper (cons (car lst) acc) (cdr lst))))))
+    (helper '() lst)))
+    
+; Exercise 2.3.14
+(define rename
+  (lambda (exp var1 var2)
+    (cond
+      ((occurs-free? var1 exp) #f)
+      ((null? exp) '())
+      ((symbol? exp) (if (eq? var2 exp) var1 exp))
+      ((eq? (car exp) 'lambda) (list 'lambda (rename (cadr exp) var1 var2) (rename (caddr exp) var1 var2)))
+      ((eq? (car exp) 'if) (list 'if (rename (cadr exp) var1 var2) (rename (caddr exp) var1 var2) (rename (cadddr exp) var1 var2)))
+      ((pair? (car exp)) (list (rename (car exp) var1 var2) (rename (cdr exp) var1 var2))) ; E1 E2
+      (else (replace-in-list var1 var2 exp)))))
+                                     
+
+(define alpha-conversion
+  (lambda (exp var1)
+    (rename exp var1 (caadr exp))))
+
+(alpha-conversion '(lambda (a) (lambda (b) (b a))) 'c)
+; (lambda (c) (lambda (b) (b c)))
