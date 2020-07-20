@@ -12,6 +12,7 @@
 
 ; 954
 
+; Exercise 3.1.2
 (define extract-vars-exp
   (lambda (exp)
     (define helper
@@ -24,8 +25,10 @@
 (define let->application
   (lambda (let-exp)
     (if (eq? (car let-exp) 'let)
-        (list (list 'lambda (car (extract-vars-exp (cadr let-exp))) (caddr let-exp)) (cadr (extract-vars-exp (cadr let-exp))))
+        (append (list (list 'lambda (car (extract-vars-exp (cadr let-exp))) (caddr let-exp))) (cadr (extract-vars-exp (cadr let-exp))))
         let-exp)))
 
 (let->application '(let ((x 4) (y 3)) (let ((z 5)) (+ x (+ y z)))))
 ; ((lambda (x y) (let ((z 5)) (+ x (+ y z)))) (4 3))
+
+; Exercise 3.1.4
