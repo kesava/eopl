@@ -784,7 +784,6 @@
       ((eq? (car exp) 'if) (list 'if (rename (cadr exp) var1 var2) (rename (caddr exp) var1 var2) (rename (cadddr exp) var1 var2)))
       ((pair? (car exp)) (list (rename (car exp) var1 var2) (rename (cdr exp) var1 var2))) ; E1 E2
       (else (replace-in-list var1 var2 exp)))))
-                                     
 
 (define alpha-conversion
   (lambda (exp var1)
