@@ -185,37 +185,7 @@
       (else (helper (cdr lst1) (cdr lst2) (cons (list (car lst1) (car lst2)) acc)))))
   (helper list1 list2 '()))
 
-(define lexical-address
-  (lambda (exp)
-    (define varref-helper
-      (lambda (v dp-pair)
-        (list (list v ': (car dp-pair) (cadr dp-pair)))))
-    (define exp-helper
-      (lambda (plists exp)
-         (cond
-           ((null? exp) '())
-           ((symbol? exp) (varref-helper exp (find-pd-from-plists exp plists)))
-           ((eq? (car exp) 'lambda) (lambda-helper (cons (cadr exp) plists) (caddr exp)))
-           ((eq? (car exp) 'if) (if-helper (cadr exp) (caddr exp) (cadddr exp) plists))
-           ((eq? (car exp) 'let) (let-helper (cons (car (extract-vars-exp (cadr exp))) plists) (cadr (extract-vars-exp (cadr exp))) (caddr exp)))
-           ((eq? (car exp) 'letrec) (letrec-helper (cons (car (extract-vars-exp (cadr exp))) plists) (cadr (extract-vars-exp (cadr exp))) (caddr exp)))
-           (else (append (exp-helper plists (car exp)) (exp-helper plists (cdr exp)))))))
-    (define if-helper
-      (lambda (pred then-exp else-exp plists)
-        (list 'if (append (exp-helper plists pred)
-                (exp-helper plists then-exp)
-                (exp-helper plists else-exp)))))
-    (define lambda-helper
-      (lambda (plists exp)
-        (list 'lambda (car plists) (exp-helper plists exp))))
-    (define let-helper
-      (lambda (var-lists assign-lists aexp)
-        (list 'let (make-pairs (car var-lists) assign-lists) (exp-helper var-lists aexp))))
-    (define letrec-helper
-      (lambda (var-lists assign-lists aexp)
-        (list 'letrec (make-pairs (car var-lists) (map (lambda (x) (exp-helper (car var-lists) x)) assign-lists)) (exp-helper var-lists aexp))))
-    
-    (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
+
 
 ; Exercise 3.2.1
 (define (and-proc . args)
@@ -276,4 +246,41 @@
 
 (cond->if '(cond (a b) (else c)))
 ; (if a b c)
-                       
+
+; Exercise 3.3.2
+(define lexical-address
+  (lambda (exp)
+    (define varref-helper
+      (lambda (v dp-pair)
+        (list (list v ': (car dp-pair) (cadr dp-pair)))))
+    (define exp-helper
+      (lambda (plists exp)
+         (cond
+           ((null? exp) '())
+           ((symbol? exp) (varref-helper exp (find-pd-from-plists exp plists)))
+           ((eq? (car exp) 'lambda) (lambda-helper (cons (cadr exp) plists) (caddr exp)))
+           ((eq? (car exp) 'if) (if-helper (cadr exp) (caddr exp) (cadddr exp) plists))
+           ((eq? (car exp) 'let) (let-helper (cons (car (extract-vars-exp (cadr exp))) plists) (cadr (extract-vars-exp (cadr exp))) (caddr exp)))
+           ((eq? (car exp) 'letrec) (letrec-helper (cons (car (extract-vars-exp (cadr exp))) plists) (cadr (extract-vars-exp (cadr exp))) (caddr exp)))
+           ((eq? (car exp) 'cond) (cond-helper (cons (car (extract-vars-exp (cdr exp))) plists) (cadr (extract-vars-exp (cdr exp)))))
+           (else (append (exp-helper plists (car exp)) (exp-helper plists (cdr exp)))))))
+    (define if-helper
+      (lambda (pred then-exp else-exp plists)
+        (list 'if (append (exp-helper plists pred)
+                (exp-helper plists then-exp)
+                (exp-helper plists else-exp)))))
+    (define lambda-helper
+      (lambda (plists exp)
+        (list 'lambda (car plists) (exp-helper plists exp))))
+    (define let-helper
+      (lambda (var-lists assign-lists aexp)
+        (list 'let (make-pairs (car var-lists) assign-lists) (exp-helper var-lists aexp))))
+    (define letrec-helper
+      (lambda (var-lists assign-lists aexp)
+        (list 'letrec (make-pairs (car var-lists) (map (lambda (x) (exp-helper (car var-lists) x)) assign-lists)) (exp-helper var-lists aexp))))
+    (define cond-helper
+      (lambda (condlists conseqlist)
+        (list 'cond (make-pairs (car condlists) (map (lambda (x) (exp-helper (car condlists) x)) conseqlist)))))
+
+    
+    (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
