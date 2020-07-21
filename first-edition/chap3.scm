@@ -177,6 +177,13 @@
           (else (helper (cdr plists) (+ depth 1))))))
     (helper plists 0)))
 
+(define (make-pairs list1 list2)
+  (define (helper lst1 lst2 acc)
+    (cond
+      ((null? lst1) acc)
+      (else (helper (cdr lst1) (cdr lst2) (cons (list (car lst1) (car lst2)) acc)))))
+  (helper list1 list2 '()))
+
 (define lexical-address
   (lambda (exp)
     (define varref-helper
@@ -189,7 +196,8 @@
            ((symbol? exp) (varref-helper exp (find-pd-from-plists exp plists)))
            ((eq? (car exp) 'lambda) (lambda-helper (cons (cadr exp) plists) (caddr exp)))
            ((eq? (car exp) 'if) (if-helper (cadr exp) (caddr exp) (cadddr exp) plists))
-           ((or (eq? (car exp) 'let) (eq? (car exp) 'letrec)) (let-helper (cons (car (extract-vars-exp (cadr exp))) plists) (caddr exp)))
+           ((eq? (car exp) 'let) (let-helper (cons (car (extract-vars-exp (cadr exp))) plists) (cadr (extract-vars-exp (cadr exp))) (caddr exp)))
+           ((eq? (car exp) 'letrec) (letrec-helper (cons (car (extract-vars-exp (cadr exp))) plists) (cadr (extract-vars-exp (cadr exp))) (caddr exp)))
            (else (append (exp-helper plists (car exp)) (exp-helper plists (cdr exp)))))))
     (define if-helper
       (lambda (pred then-exp else-exp plists)
@@ -200,9 +208,11 @@
       (lambda (plists exp)
         (list 'lambda (car plists) (exp-helper plists exp))))
     (define let-helper
-      (lambda (alists exp)
-        ; bug here, gathering only vars, not the assignments in the let statement
-        (list 'let (car alists) (exp-helper alists exp))))
+      (lambda (var-lists assign-lists aexp)
+        (list 'let (make-pairs (car var-lists) assign-lists) (exp-helper var-lists aexp))))
+    (define letrec-helper
+      (lambda (var-lists assign-lists aexp)
+        (list 'letrec (make-pairs (car var-lists) (map (lambda (x) (exp-helper var-lists x)) assign-lists)) (exp-helper var-lists aexp))))
     
     (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
 
@@ -228,4 +238,8 @@
 (or-proc #f #t #t)
 ; #t
 
+; Exercise 3.3.1
+
+    
+  
                        
