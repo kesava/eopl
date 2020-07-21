@@ -205,3 +205,27 @@
         (list 'let (car alists) (exp-helper alists exp))))
     
     (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
+
+; Exercise 3.2.1
+(define (and-proc . args)
+  (cond
+    ((null? args) #t)
+    ((pair? (cdr args)) (if (car args) (apply and-proc (cdr args)) #f))
+    (else (car args))))
+
+(and-proc #t #t #t)
+; #t
+(and-proc #t #t #f)
+; #f
+
+(define (or-proc . args)
+  (cond
+    ((null? args) #f)
+    (else (if (car args) (car args) (apply or-proc (cdr args))))))
+
+(or-proc #f #f #f)
+; #f
+(or-proc #f #t #t)
+; #t
+
+                       
