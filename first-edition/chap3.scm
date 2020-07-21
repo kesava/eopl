@@ -163,6 +163,7 @@
       (lambda (position lst)
         (cond
           ((null? lst) -1)
+          ((not (pair? lst)) -1)
           ((eq? (car lst) v) position)
           (else (helper (+ position 1) (cdr lst))))))
     (helper 0 lst)))
@@ -212,7 +213,7 @@
         (list 'let (make-pairs (car var-lists) assign-lists) (exp-helper var-lists aexp))))
     (define letrec-helper
       (lambda (var-lists assign-lists aexp)
-        (list 'letrec (make-pairs (car var-lists) (map (lambda (x) (exp-helper var-lists x)) assign-lists)) (exp-helper var-lists aexp))))
+        (list 'letrec (make-pairs (car var-lists) (map (lambda (x) (exp-helper (car var-lists) x)) assign-lists)) (exp-helper var-lists aexp))))
     
     (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
 
