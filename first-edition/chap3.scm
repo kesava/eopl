@@ -1,5 +1,5 @@
 #lang eopl
-
+  
 ; Exercise 3.1.1
 (let ((x 5) (y 6) (z 7))
   (let ((x 13) (y (+ x y)) (z x))
@@ -247,7 +247,7 @@
 (cond->if '(cond (a b) (else c)))
 ; (if a b c)
 
-; Exercise 3.3.2
+; Exercise 3.1.4 and Exercise 3.3.2
 (define lexical-address
   (lambda (exp)
     (define varref-helper
@@ -284,3 +284,22 @@
 
     
     (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
+
+; Section 3.4
+
+(define-datatype binaryTree binaryTree?
+  (null-node)
+  (leaf-node (datum number?))
+  (interior-node (key symbol?) (left-child binaryTree?) (right-child binaryTree?)))
+
+(define tree-1 (interior-node 'foo (interior-node 'bar (leaf-node 1) (leaf-node 22)) (leaf-node 3)))
+
+; Exercise 3.4.1
+
+(define leaf-sum
+  (lambda (tree)
+    (cases binaryTree tree
+      (leaf-node (value) value)
+      (interior-node (key left-tree right-tree)
+                (+ (leaf-sum left-tree) (leaf-sum right-tree)))
+      (else (eopl:error "leaf-sum-1: invalid tree" tree)))))
