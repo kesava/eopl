@@ -294,6 +294,15 @@
 
 (define tree-1 (interior-node 'foo (interior-node 'bar (leaf-node 1) (leaf-node 22)) (leaf-node 3)))
 
+(define leaf-node?
+  (lambda (x)
+    (cond
+      ((not (binaryTree? x) #f))
+      (else (cases binaryTree x
+              (null-node () #f)
+              (leaf-node (l) #t)
+              (interior-node (k l r) #f))))))
+
 ; Exercise 3.4.1
 
 (define leaf-sum
@@ -303,3 +312,169 @@
       (interior-node (key left-tree right-tree)
                 (+ (leaf-sum left-tree) (leaf-sum right-tree)))
       (else (eopl:error "leaf-sum-1: invalid tree" tree)))))
+
+
+(define-datatype lc-exp lc-exp?
+  (lit-exp
+   (datum number?))
+  (var-exp
+   (var symbol?))
+  (lambda-exp
+   (formal symbol?)
+   (body lc-exp?))
+  (app-exp
+   (rator lc-exp?)
+   (rand lc-exp?)))
+
+(define parse
+  (lambda (datum)
+    (cond
+      ((number? datum) (make-lit-exp datum))
+      ((symbol? datum) (make-var-exp datum))
+      ((pair? datum)
+       (if (eq? (car datum) 'lambda)
+           (make-lambda-exp (caadr datum) (parse (caddr datum)))
+           (make-app-exp (parse (car datum)) (parse (cadr datum)))))
+      (else (eopl:error "parse: invalid concrete syntax")))))
+
+(define unparse
+  (lambda (exp)
+    (cases lc-exp exp
+      (lit-exp (datum) datum)
+      (var-exp (var) var)
+      (lambda-exp (formal body) (list 'lambda (list formal) (unparse body)))
+      (app-exp (rator rand) (list (unparse rator) (unparse rand)))
+      (else (eopl:error "unparse: invalid abstract sybtax" exp)))))
+
+(unparse (parse '(lambda (x) (x y))))
+; (lambda (x) (x y))
+
+(define remove
+  (lambda (s los)
+    (if (null? los)
+        '()
+        (if (eq? s (car los))
+            (remove s (cdr los))
+            (cons (car los) (remove s (cdr los)))))))
+
+(define (union a b)
+  (cond ((null? b) a)
+        ((member (car b) a)
+         (union a (cdr b)))
+        (else (union (cons (car b) a) (cdr b)))))
+
+(define free-vars-with-exp
+  (lambda (exp)
+    (cases lc-exp exp
+      (lit-exp (datum) '())
+      (var-exp (var) (list var))
+      (lambda-exp (formal body) (remove formal (free-vars-with-exp body)))
+      (app-exp (rator rand) (union (free-vars-with-exp rator) (free-vars-with-exp rand))))))
+
+; Exercise 3.4.5
+
+(define free?
+  (lambda (var exp)
+    (cases lc-exp exp
+      (lit-exp (datum) #f)
+      (var-exp (v) (eq? v var))
+      (lambda-exp (formal body) (if (eq? formal var)
+                                    #f
+                                    (free? var body)))
+      (app-exp (rator rand) (or (free? var rator)
+                                (free? var rand))))))
+
+(free? 'x (parse '(lambda (y) (x (x y)))))
+; #t
+(free? 'y (parse '(lambda (y) (x (x y)))))
+; #f
+
+; Exercise 3.4.6
+
+(define-datatype l-exp l-exp?
+  (lt-exp
+   (datum number?))
+  (vr-exp
+   (var symbol?))
+  (if-exp
+   (test-exp l-exp?)
+   (then-exp l-exp?)
+   (else-exp l-exp?))
+  (ld-exp
+   (formals list?)
+   (body l-exp?))
+  (ap-exp
+   (rator l-exp?)
+   (rands l-exp?)))
+
+(define-datatype lex-datum lex-datum?
+  (lex-info
+   (var symbol?)
+   (distane number?)
+   (position number?)))
+
+(define lex-parse
+  (lambda (datum)
+    (cond
+      ((number? datum) (make-lt-exp datum))
+      ((symbol? datum) (make-vr-exp datum))
+      ((pair? datum) (if (eq? (car datum) 'lambda)
+                         (make-ld-exp (cadr datum) (lex-parse (caddr datum)))
+                         (if (eq? (car datum) 'if)
+                             (make-if-exp (lex-parse (cadr datum)) (lex-parse (caddr datum)) (lex-parse (cadddr datum)))
+                             (if (pair? (cdr datum))
+                                 (make-ap-exp (lex-parse (car datum)) (lex-parse (cdr datum)))
+                                 (lex-parse (car datum))))))
+      (else (eopl:error "parse: invalid concrete syntax")))))
+  
+
+(define lex-unparse
+  (lambda (exp)
+    (cases l-exp exp
+      (lt-exp (datum) datum)
+      (vr-exp (var) var)
+      (ld-exp (formal body) (list 'lambda (list formal) (unparse body)))
+      (if-exp (test-exp then-exp else-exp) (list 'if (unparse test-exp) (unparse then-exp) (unparse else-exp)))
+      (ap-exp (rator rand) (list (unparse rator) (unparse rand)))
+      (else (eopl:error "unparse: invalid abstract sybtax" exp)))))
+
+
+(define lex-address
+  (lambda (exp)
+    (define varref-helper
+      (lambda (v dp-pair)
+        (list (list v ': (car dp-pair) (cadr dp-pair)))))
+    (define exp-helper
+      (lambda (plists exp)
+        (cases l-exp exp
+          (lt-exp (datum) datum)
+          (vr-exp (var) (varref-helper var (find-pd-from-plists var plists)))
+          (if-exp (test-exp then-exp else-exp) (if-helper test-exp then-exp else-exp plists))
+          (ld-exp (formals body) (lambda-helper (cons formals plists) body))
+          (ap-exp (rator rands) (append (exp-helper plists rator) (exp-helper plists rands))))))
+    (define if-helper
+      (lambda (pred then-exp else-exp plists)
+        (list 'if (append (exp-helper plists pred)
+                (exp-helper plists then-exp)
+                (exp-helper plists else-exp)))))
+    (define lambda-helper
+      (lambda (plists exp)
+        (list 'lambda (car plists) (exp-helper plists exp))))
+    (define let-helper
+      (lambda (var-lists assign-lists aexp)
+        (list 'let (make-pairs (car var-lists) assign-lists) (exp-helper var-lists aexp))))
+    (define letrec-helper
+      (lambda (var-lists assign-lists aexp)
+        (list 'letrec (make-pairs (car var-lists) (map (lambda (x) (exp-helper (car var-lists) x)) assign-lists)) (exp-helper var-lists aexp))))
+    (define cond-helper
+      (lambda (condlists conseqlist)
+        (list 'cond (make-pairs (car condlists) (map (lambda (x) (exp-helper (car condlists) x)) conseqlist)))))
+
+    
+    (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
+
+(lex-address (lex-parse '(lambda (y x) (x (x y)))))
+; (lambda (y x) ((x : 0 1) (x : 0 1) (y : 0 0)))
+
+(lex-address (lex-parse '(lambda (y x) (x (x y (lambda (b) (b x)))))))
+; (lambda (y x) ((x : 0 1) (x : 0 1) (y : 0 0) lambda (b) ((b : 0 0) (x : 1 1))))
