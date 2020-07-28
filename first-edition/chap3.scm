@@ -173,7 +173,7 @@
     (define helper
       (lambda (plists depth)
         (cond
-          ((null? plists) (list '() -1))
+          ((null? plists) (list -1 -1))
           ((> (find-position v (car plists)) -1) (list depth (find-position v (car plists))))
           (else (helper (cdr plists) (+ depth 1))))))
     (helper plists 0)))
@@ -285,6 +285,9 @@
     
     (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
 
+(lexical-address '(let ((x p)) (lambda (y x) (x (x y)))))
+; (let ((x p)) (lambda (y x) ((x : 0 1) (x : 0 1) (y : 0 0))))
+
 ; Section 3.4
 
 (define-datatype binaryTree binaryTree?
@@ -394,8 +397,10 @@
 (define-datatype l-exp l-exp?
   (lt-exp
    (datum number?))
-  (vr-exp
-   (var symbol?))
+  (lex-info
+   (id symbol?)
+   (distane number?)
+   (position number?))
   (if-exp
    (test-exp l-exp?)
    (then-exp l-exp?)
@@ -407,24 +412,18 @@
    (rator l-exp?)
    (rands l-exp?)))
 
-(define-datatype lex-datum lex-datum?
-  (lex-info
-   (var symbol?)
-   (distane number?)
-   (position number?)))
-
 (define lex-parse
   (lambda (datum)
     (cond
       ((number? datum) (make-lt-exp datum))
-      ((symbol? datum) (make-vr-exp datum))
-      ((pair? datum) (if (eq? (car datum) 'lambda)
-                         (make-ld-exp (cadr datum) (lex-parse (caddr datum)))
-                         (if (eq? (car datum) 'if)
-                             (make-if-exp (lex-parse (cadr datum)) (lex-parse (caddr datum)) (lex-parse (cadddr datum)))
-                             (if (pair? (cdr datum))
-                                 (make-ap-exp (lex-parse (car datum)) (lex-parse (cdr datum)))
-                                 (lex-parse (car datum))))))
+      ((symbol? datum) (make-lex-info datum -1 -1))
+      ((pair? datum) (cond
+                       ((eq? (car datum) 'lambda)
+                         (make-ld-exp (cadr datum) (lex-parse (caddr datum))))
+                       ((eq? (car datum) 'if)
+                         (make-if-exp (lex-parse (cadr datum)) (lex-parse (caddr datum)) (lex-parse (cadddr datum))))
+                       ((pair? (cdr datum)) (make-ap-exp (lex-parse (car datum)) (lex-parse (cdr datum))))
+                       (else (lex-parse (car datum)))))
       (else (eopl:error "parse: invalid concrete syntax")))))
   
 
@@ -432,49 +431,41 @@
   (lambda (exp)
     (cases l-exp exp
       (lt-exp (datum) datum)
-      (vr-exp (var) var)
-      (ld-exp (formal body) (list 'lambda (list formal) (unparse body)))
-      (if-exp (test-exp then-exp else-exp) (list 'if (unparse test-exp) (unparse then-exp) (unparse else-exp)))
-      (ap-exp (rator rand) (list (unparse rator) (unparse rand)))
+      (lex-info (v d p) (list v ': d p))
+      (ld-exp (formals body) (list 'lambda formals (lex-unparse body)))
+      (if-exp (test-exp then-exp else-exp) (list 'if (lex-unparse test-exp) (lex-unparse then-exp) (lex-unparse else-exp)))
+      (ap-exp (rator rand) (list (lex-unparse rator) (lex-unparse rand)))
       (else (eopl:error "unparse: invalid abstract sybtax" exp)))))
 
 
 (define lex-address
   (lambda (exp)
-    (define varref-helper
-      (lambda (v dp-pair)
-        (list (list v ': (car dp-pair) (cadr dp-pair)))))
+    (define get-lexical-address
+      (lambda (v plists)
+        (let ((dp-pair (find-pd-from-plists v plists)))
+              (make-lex-info v (car dp-pair) (cadr dp-pair)))))
     (define exp-helper
       (lambda (plists exp)
         (cases l-exp exp
           (lt-exp (datum) datum)
-          (vr-exp (var) (varref-helper var (find-pd-from-plists var plists)))
+          (lex-info (var d p) (get-lexical-address var plists))
           (if-exp (test-exp then-exp else-exp) (if-helper test-exp then-exp else-exp plists))
           (ld-exp (formals body) (lambda-helper (cons formals plists) body))
-          (ap-exp (rator rands) (append (exp-helper plists rator) (exp-helper plists rands))))))
+          (ap-exp (rator rands) (make-ap-exp (exp-helper plists rator) (exp-helper plists rands))))))
     (define if-helper
       (lambda (pred then-exp else-exp plists)
-        (list 'if (append (exp-helper plists pred)
+        (make-if-exp (append (exp-helper plists pred)
                 (exp-helper plists then-exp)
                 (exp-helper plists else-exp)))))
     (define lambda-helper
       (lambda (plists exp)
-        (list 'lambda (car plists) (exp-helper plists exp))))
-    (define let-helper
-      (lambda (var-lists assign-lists aexp)
-        (list 'let (make-pairs (car var-lists) assign-lists) (exp-helper var-lists aexp))))
-    (define letrec-helper
-      (lambda (var-lists assign-lists aexp)
-        (list 'letrec (make-pairs (car var-lists) (map (lambda (x) (exp-helper (car var-lists) x)) assign-lists)) (exp-helper var-lists aexp))))
-    (define cond-helper
-      (lambda (condlists conseqlist)
-        (list 'cond (make-pairs (car condlists) (map (lambda (x) (exp-helper (car condlists) x)) conseqlist)))))
+        (make-ld-exp (car plists) (exp-helper plists exp))))
 
     
     (exp-helper (list (list 'eq? 'cons '+ '<)) exp)))
 
-(lex-address (lex-parse '(lambda (y x) (x (x y)))))
-; (lambda (y x) ((x : 0 1) (x : 0 1) (y : 0 0)))
+(lex-unparse (lex-address (lex-parse '(lambda (y x) (x (x y))))))
+; (lambda (y x) ((x : 0 1) ((x : 0 1) (y : 0 0))))
 
-(lex-address (lex-parse '(lambda (y x) (x (x y (lambda (b) (b x)))))))
-; (lambda (y x) ((x : 0 1) (x : 0 1) (y : 0 0) lambda (b) ((b : 0 0) (x : 1 1))))
+(lex-unparse (lex-address (lex-parse '(lambda (y x) (x (x y (lambda (z) (z x))))))))
+; (lambda (y x) ((x : 0 1) ((x : 0 1) ((y : 0 0) (lambda (z) ((z : 0 0) (x : 1 1)))))))
