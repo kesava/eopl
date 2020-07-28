@@ -469,3 +469,63 @@
 
 (lex-unparse (lex-address (lex-parse '(lambda (y x) (x (x y (lambda (z) (z x))))))))
 ; (lambda (y x) ((x : 0 1) ((x : 0 1) ((y : 0 0) (lambda (z) ((z : 0 0) (x : 1 1)))))))
+
+; Section 3.6.2
+(define list-index
+  (lambda (s los)
+    (define helper
+      (lambda (los n)
+        (if (null? los)
+            -1
+            (if (equal? (car los) s)
+                n
+                (helper (cdr los) (+ 1 n))))))
+    (helper los 0)))
+
+
+(define ribassoc
+  (lambda (s los v fail-value)
+    (let ([index (list-index s los)])
+      (if (eq? index -1)
+          fail-value
+          (vector-ref v index)))))
+
+(define-datatype ff ff?
+  (empty-ff)
+  (extended-ff (sym symbol?) (val number?) (next-ff ff?))
+  (extended-ff* (sym-list (list-of symbol?)) (var-list vector?) (next-ff ff?)))
+
+(define (create-empty-ff) (empty-ff))
+(define (extend-ff sym val f) (extended-ff sym val f))
+(define (extend-ff* sym-list val-list ff) (extended-ff* sym-list (list->vector val-list) ff))
+
+(define (apply-ff f symbol)
+  (cases ff f
+    (empty-ff () (eopl:error "Empty ff: no association for symbol" symbol))
+    (extended-ff (sym val next-ff)
+      (if (eq? sym symbol)
+        val
+        (apply-ff next-ff symbol)))
+    (extended-ff* (sym-list val-vector ff)
+                  (let ((val (ribassoc symbol sym-list val-vector '*fail*)))
+                    (if (eq? val '*fail*)
+                        (apply-ff ff symbol)
+                        val)))
+    (else (eopl:error "apply-ff: invalid finite function" f))))
+
+(define ff1 (extend-ff* '(d x y) '(6 7 8) (create-empty-ff)))
+; ff1
+; #(struct:extended-ff* (d x y) #(6 7 8) #(struct:empty-ff))
+(define ff2 (extend-ff* '(a b c) '(1 2 3) ff1))
+; ff2
+; #(struct:extended-ff* (a b c) #(1 2 3) #(struct:extended-ff* (d x y) #(6 7 8) #(struct:empty-ff)))
+(apply-ff ff2 'd)
+; 6
+(define ff3 (extend-ff* '(d e) '(4 5) ff2))
+; ff3
+; #(struct:extended-ff* (d e) #(4 5) #(struct:extended-ff* (a b c) #(1 2 3) #(struct:extended-ff* (d x y) #(6 7 8) #(struct:empty-ff))))
+(apply-ff ff3 'a)
+; 1
+(apply-ff ff3 'd)
+; 4
+  
