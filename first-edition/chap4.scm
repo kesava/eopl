@@ -39,3 +39,7 @@
 ;      ((lambda (x) (z x))
 ;       (lambda (y) (z y)))))
 ;  (lambda (y) y))
+; =>
+; (lambda (y)
+;   ((lambda (z1) (z z1))
+;    (lambda (z2) (z z2))))
