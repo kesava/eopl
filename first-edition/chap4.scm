@@ -74,7 +74,24 @@
       (lambda-exp (formal body) #t)
       (app-exp (rator rand) #f)
       (else (eopl:error "lambda-exp?: error in syntax")))))
-        
+
+(define lambda-exp-formal
+  (lambda (exp)
+    (cases lc-exp exp
+      (lit-exp (datum) #f)
+      (var-exp (var) #f)
+      (lambda-exp (formal body) formal)
+      (app-exp (rator rand) #f)
+      (else (eopl:error "lambda-exp-formal: error in syntax")))))
+
+(define lambda-exp-body
+  (lambda (exp)
+    (cases lc-exp exp
+      (lit-exp (datum) #f)
+      (var-exp (var) #f)
+      (lambda-exp (formal body) body)
+      (app-exp (rator rand) #f)
+      (else (eopl:error "lambda-exp-body: error in syntax")))))
 
 (define parse
   (lambda (datum)
@@ -87,6 +104,26 @@
            (make-app-exp (parse (car datum)) (parse (cadr datum)))))
       (else (eopl:error "parse: invalid concrete syntax")))))
 
+(define unparse
+  (lambda (exp)
+    (cases lc-exp exp
+      (lit-exp (datum) datum)
+      (var-exp (var) var)
+      (lambda-exp (formal body) (list 'lambda (list formal) (unparse body)))
+      (app-exp (rator rand) (list (unparse rator) (unparse rand)))
+      (else (eopl:error "unparse: invalid abstract sybtax" exp)))))
+
+(define free?
+  (lambda (var exp)
+    (cases lc-exp exp
+      (lit-exp (datum) #f)
+      (var-exp (v) (eq? v var))
+      (lambda-exp (formal body) (if (eq? formal var)
+                                    #f
+                                    (free? var body)))
+      (app-exp (rator rand) (or (free? var rator)
+                                (free? var rand))))))
+
 (define beta-redex?
   (lambda (exp)
     (cases lc-exp exp
@@ -94,12 +131,76 @@
       (var-exp (var) #f)
       (lambda-exp (formal body) #f)
       (app-exp (rator rand) (and (lambda-exp? rator)
-                                 (var-exp? rand)))
-      (else (eopl:error "beta-redex? invalid concrete syntax")))))
-      
+                                 (lc-exp? rand)))
+      (else (eopl:error "beta-redex?: invalid concrete syntax")))))
+
 (beta-redex? (parse '(lambda (x) (y z))))
 ; #f      
 (beta-redex? (parse '((lambda (x) (y z)) z)))
 ; #t
 (beta-redex? (parse '(lambda (x) ((lambda (x) (y x)) z))))
 ; #f
+
+(define beta-redex-lambda
+  (lambda (r-exp)
+    (cases lc-exp r-exp
+      (lit-exp (datum) #f)
+      (var-exp (var) #f)
+      (lambda-exp (formal body) #f)
+      (app-exp (rator rand) rator)
+      (else (eopl:error "beta-redex-lambda: invalid concrete syntax")))))
+
+(define beta-redex-var
+  (lambda (r-exp)
+    (cases lc-exp r-exp
+      (lit-exp (datum) #f)
+      (var-exp (var) #f)
+      (lambda-exp (formal body) #f)
+      (app-exp (rator rand) rand)
+      (else (eopl:error "beta-redex-lambda: invalid concrete syntax")))))
+
+
+(define gensym
+  (let ([counter 1233])
+    (lambda ([x 'g0])
+      (if (number? x)
+        (set! counter x)
+        (begin
+          (set! counter (+ counter 1))
+          (string->symbol (string-append (symbol->string x) (number->string counter))))))))
+
+(define substitute
+  (lambda (e m x)
+    (cases lc-exp e
+      (lit-exp (datum) datum)
+      (var-exp (var) (if (equal? e (parse x))
+                         m
+                         e))
+      (lambda-exp (formal body)
+                  (cond
+                    ((equal? formal (parse x)) e)
+                    ((not (free? x body)) e)
+                    ((not (free? formal m)) (make-lambda-exp formal (substitute body m x)))
+                    (else (let ((z (gensym)))
+                            (make-lambda-exp z (substitute (substitute body (parse z) formal) m x))))))
+      (app-exp (rator rand) (make-app-exp (substitute rator m x) (substitute rand m x)))
+      (else (eopl:error "substitute: invalid concrete syntax")))))
+
+(unparse (substitute (parse '(a b)) (parse 'c) 'b))
+; (a c)
+(unparse (substitute (parse '(lambda (a) (a b))) (parse 'a) 'b))
+; (lambda (g01234) (g01234 a))
+
+; 4.2.4
+(define beta-reduce
+  (lambda (r-exp)
+    (if (beta-redex? r-exp)
+        (let ((e (lambda-exp-body (beta-redex-lambda r-exp))) (m (beta-redex-var r-exp)) (x (lambda-exp-formal (beta-redex-lambda r-exp))))
+          (substitute e m x))
+        r-exp)))
+
+(unparse (beta-reduce (parse '((lambda (x) (y x)) z))))
+; (y z)
+
+(unparse (beta-reduce (parse '((lambda (x) (lambda (y) (x y))) (y w)))))
+;(lambda (g01235) ((y w) g01235))
