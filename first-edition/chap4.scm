@@ -195,7 +195,9 @@
 (define beta-reduce
   (lambda (r-exp)
     (if (beta-redex? r-exp)
-        (let ((e (lambda-exp-body (beta-redex-lambda r-exp))) (m (beta-redex-var r-exp)) (x (lambda-exp-formal (beta-redex-lambda r-exp))))
+        (let ((e (lambda-exp-body (beta-redex-lambda r-exp)))
+              (m (beta-redex-var r-exp))
+              (x (lambda-exp-formal (beta-redex-lambda r-exp))))
           (substitute e m x))
         r-exp)))
 
@@ -204,3 +206,18 @@
 
 (unparse (beta-reduce (parse '((lambda (x) (lambda (y) (x y))) (y w)))))
 ;(lambda (g01235) ((y w) g01235))
+
+
+; Exercise 4.2.5
+(define eta-redex?
+  (lambda (exp)
+    (if (lambda-exp? exp)
+        (free? (lambda-exp-formal exp) (lambda-exp-body exp))
+        #f)))
+
+(eta-redex? (parse '(lambda (x) (y x))))
+; #t
+(eta-redex? (parse '(lambda (x) ((lambda (y) y) x))))
+; #t
+(eta-redex? (parse '((lambda (x) (y x)) z)))
+; #f
