@@ -75,6 +75,15 @@
       (app-exp (rator rand) #f)
       (else (eopl:error "lambda-exp?: error in syntax")))))
 
+(define app-exp?
+  (lambda (exp)
+    (cases lc-exp exp
+      (lit-exp (datum) #f)
+      (var-exp (var) #f)
+      (lambda-exp (formal body) #f)
+      (app-exp (rator rand) #t)
+      (else (eopl:error "lambda-exp?: error in syntax")))))
+
 (define lambda-exp-formal
   (lambda (exp)
     (cases lc-exp exp
@@ -191,7 +200,7 @@
 (unparse (substitute (parse '(lambda (a) (a b))) (parse 'a) 'b))
 ; (lambda (g01234) (g01234 a))
 
-; 4.2.4
+; Exercise 4.2.4
 (define beta-reduce
   (lambda (r-exp)
     (if (beta-redex? r-exp)
@@ -220,4 +229,54 @@
 (eta-redex? (parse '(lambda (x) ((lambda (y) y) x))))
 ; #t
 (eta-redex? (parse '((lambda (x) (y x)) z)))
+; #f
+
+(define answer?
+  (lambda (exp)
+    (not (app-exp? exp))))
+
+(define reduce-once-appl
+  (lambda (exp succeed fail)
+    (cases lc-exp exp 
+      (lit-exp (datum) (fail))
+      (var-exp (var) (fail))
+      (lambda-exp (formal body) (fail))
+      (app-exp (rator rand)
+               (if (and (beta-redex? exp) (answer? rand))
+                   (succeed (beta-reduce exp))
+                   (reduce-once-appl rator
+                                    (lambda (reduced-rator) (succeed (make-app-exp reduced-rator rand)))
+                                    (lambda () (reduce-once-appl rand
+                                                                  (lambda (reduced-rand) (succeed (make-app-exp rator reduced-rand)))
+                                                                  fail))))))))
+
+; Exercise 4.3.1
+(define reduce-history
+  (lambda (exp n)
+    (if (eq? n 0)
+        '()
+        (reduce-once-appl (if (lc-exp? exp)
+                              exp
+                              (parse exp))
+                          (lambda (e) (cons (unparse e) (reduce-history e (- n 1))))
+                          (lambda () '())))))
+
+(reduce-history '((lambda (x) (x ((lambda (x) y) z))) w) 5)
+; ((w ((lambda (x) y) z)) (w y))
+
+(reduce-history '((lambda (x) (x x)) (lambda (x) (x x))) 5)
+; (((lambda (x) (x x)) (lambda (x) (x x))) ((lambda (x) (x x)) (lambda (x) (x x))) ((lambda (x) (x x)) (lambda (x) (x x))) ((lambda (x) (x x)) (lambda (x) (x x))) ((lambda (x) (x x)) (lambda (x) (x x))))
+
+; Exercise 4.3.2
+(define reduce*
+  (lambda (exp n)
+    (let ((result (reduce-history exp n)))
+      (if (eq? (length result) n)
+          #f
+          (car (reverse result))))))
+
+(reduce* '((lambda (x) (x ((lambda (x) y) z))) w) 5)
+; (w y)
+
+(reduce* '((lambda (x) (x x)) (lambda (x) (x x))) 5)
 ; #f
