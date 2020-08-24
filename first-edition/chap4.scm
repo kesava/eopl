@@ -280,3 +280,45 @@
 
 (reduce* '((lambda (x) (x x)) (lambda (x) (x x))) 5)
 ; #f
+
+; Exercise 4.3.3
+; ribassoc
+
+; Exercise 4.3.4
+; reduce-once-appl with +
+
+; Exercise 4.3.5
+(define reduce-once-leftmost
+  (lambda (exp succeed fail)
+    (cases lc-exp exp 
+      (lit-exp (datum) (fail))
+      (var-exp (var) (fail))
+      (lambda-exp (formal body) (if (beta-redex? body)
+                                    (reduce-once-leftmost body
+                                                          (lambda (reduced-body) (succeed (make-lambda-exp formal reduced-body)))
+                                                          (fail))
+                                    (fail)))
+      (app-exp (rator rand)
+               (cond
+                 ((beta-redex? exp) (succeed (beta-reduce exp)))
+                 (else (reduce-once-leftmost rator
+                                             (lambda (reduced-rator) (succeed (make-app-exp reduced-rator rand)))
+                                             (lambda () (reduce-once-leftmost rand
+                                                                              (lambda (reduced-rand) (succeed (make-app-exp rator reduced-rand)))
+                                                                              fail)))))))))
+
+(define reduce-history-leftmost
+  (lambda (exp n)
+    (if (eq? n 0)
+        '()
+        (reduce-once-leftmost (if (lc-exp? exp)
+                              exp
+                              (parse exp))
+                          (lambda (e) (cons (unparse e) (reduce-history-leftmost e (- n 1))))
+                          (lambda () '())))))
+
+(reduce-history-leftmost '((lambda (x) (x ((lambda (x) y) z))) w) 5)
+; ((w ((lambda (x) y) z)) (w y))
+
+(reduce-history-leftmost '((lambda (y) z) ((lambda (x) (x x)) (lambda (x) (x x)))) 5)
+; (z)
