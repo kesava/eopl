@@ -1,4 +1,5 @@
-#lang eopl
+#lang eopl	
+
 ; Section 4.2
 ; Exercise 4.2.1 - use beta-reductions
 
@@ -322,3 +323,120 @@
 
 (reduce-history-leftmost '((lambda (y) z) ((lambda (x) (x x)) (lambda (x) (x x)))) 5)
 ; (z)
+
+; Exercise 4.4.2
+; Exercise 4.4.3
+; TODO: Need to get better at Y-combinator lambda calculus
+
+
+(define for-each
+  (lambda (proc lst)
+    (if (null? lst)
+        'done
+        (begin
+          (proc (car lst))
+          (for-each proc (cdr lst))))))
+
+(define displayln
+  (lambda lst
+    (begin
+      (for-each display lst)
+      (newline))))
+
+; (displayln 2 "+" 2 "=" (+ 2 2))
+; 2+2=4
+
+(define read-eval-print
+  (lambda ()
+    (display "--> ")
+    (write (eval (read)))
+    (newline)
+    (read-eval-print)))
+
+; (read-eval-print)
+; --> (+ 1 2)
+; 3
+; --> (car (cons "foo" 'foo))
+; "foo"
+
+; Exercise 4.5.1
+(define reduce*-repl
+  (lambda ()
+    (display "--> ")
+    (write (reduce* (read) 5))
+    (newline)
+    (reduce*-repl)))
+
+; (reduce*-repl)
+; '((lambda (x) (x ((lambda (x) y) z))) w)
+; '(w y)
+
+; Exercise 4.5.2
+; Doesnt mutate global value, works only in local scope
+(define set-cdr!
+  (lambda (lst ncdr)
+    (set! lst (cons (car lst) ncdr))))
+          
+(define reverse!
+  (letrec ((loop
+            (lambda (last ls)
+              (let ((next (cdr ls)))
+                (set-cdr! ls last)
+                (if (null? next)
+                    ls
+                    (loop ls next))))))
+  (lambda (ls)
+    (if (null? ls)
+        ls
+        (loop '() ls)))))
+
+; Exercise 4.6.1
+
+(define make-stack
+  (lambda (size)
+    (let ((stk (make-vector size)) (pos 0))
+      (lambda (message)
+        (case message
+          ((empty?) (lambda () (eq? pos 0)))
+          ((push!) (lambda (x) (begin (vector-set! stk pos x) (set! pos (+ pos 1)))))
+          ((pop!) (lambda () (if (eq? pos 0)
+                                 (eopl:error "Stack empty")
+                                 (begin
+                                   (set! pos (- pos 1))
+                                   (vector-ref stk pos)))))
+          ((top) (lambda () (if (eq? pos 0)
+                                (eopl:error "Stack empty")
+                                (vector-ref stk (- pos 1)))))
+          (else (eopl:error "stack: invalid message -- " message)))))))
+
+(define s1 (make-stack 10))
+((s1 'push!) 7)
+((s1 'push!) 4)
+((s1 'push!) 2)
+((s1 'top))
+; 2
+((s1 'pop!))
+; 2
+((s1 'top))
+; 4
+((s1 'pop!))
+; 4
+((s1 'pop!))
+; 7
+
+; Exercise 4.6.3
+(define next-symbol
+  (let ((c 0))
+    (lambda ()
+      (set! c (+ c 1))
+      (string->symbol (string-append "g" (number->string c))))))
+
+(eq? (next-symbol) 'g1)
+; #t
+
+(eq? (next-symbol) 'g2)
+; #t
+
+(eq? (next-symbol) (next-symbol))
+; #f
+      
