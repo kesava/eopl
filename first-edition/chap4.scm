@@ -439,4 +439,11 @@
 
 (eq? (next-symbol) (next-symbol))
 ; #f
+
+; Exercise 4.7.1 and 4.7.2
+; Streams ADT
+
+
+
+
       
