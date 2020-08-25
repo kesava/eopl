@@ -424,6 +424,25 @@
 ((s1 'pop!))
 ; 7
 
+; Exercise 4.6.2
+(define make-ff
+  (lambda (current-env)
+    (let ((env current-env))
+      (lambda (message)
+        (case message
+          ((empty?) (lambda () (null? env)))
+          ((extend) (lambda (sym val) (begin
+                                        (set! env (cons (list sym val) env))
+                                        (make-ff env))))
+          ((apply) (lambda (sym) (letrec ((findsym (lambda (envr) (if (null? envr)
+                                                                  (eopl:error "No association for symbol: " sym)
+                                                                  (if (eq? (caar envr) sym)
+                                                                      (cadar envr)
+                                                                      (findsym (cdr envr)))))))
+                                   (findsym env))))
+          ((print) (lambda () (display env)))
+          (else (eopl:error "Invalid message for make-ff")))))))
+
 ; Exercise 4.6.3
 (define next-symbol
   (let ((c 0))
