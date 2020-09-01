@@ -22,7 +22,7 @@
 
 (extend-syntax (variant-case else)
                ((variant-case var) (error "variant-case: no clause matches" var))
-               ((variant-case var (else exp1 exp2 ...)) (begin exp1 exp2 •••))
+               ((variant-case var (else exp1 exp2 ...)) (begin exp1 exp2 ...))
                ((variant-case exp clause ...)
                 (not (symbol? 'exp))
                 (with ((var (gensym)))
