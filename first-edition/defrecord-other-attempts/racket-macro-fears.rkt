@@ -14,5 +14,5 @@
 (define ll '(x y z))
 
 (define make-pair
-  (lambda (c)
-    (format "~a->" c)))
+  (lambda (c d)
+    (format "~a->~a" c d)))

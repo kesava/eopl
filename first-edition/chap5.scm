@@ -1,4 +1,5 @@
 #lang eopl
+(require "string-parser.rkt")
 
 (define and-l (lambda x 
     (if (null? x)
