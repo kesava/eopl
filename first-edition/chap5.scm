@@ -1,5 +1,7 @@
 #lang eopl
+(require "define-record.rkt")
 (require "string-parser.rkt")
+(require readline/readline)
 
 (define and-l (lambda x 
     (if (null? x)
@@ -10,25 +12,34 @@
   (lambda (l-ex)
     (and (list? l-ex) (apply and-l (map (lambda (x) (exp? x)) l-ex)))))
 
-(define-datatype exp exp?
-  (lit-exp
-   (datum number?))
-  (var-exp
-   (var symbol?))
-  (app-exp
-   (rator exp?)
-   (rands list-of-exp?)))
+(define exp?
+  (lambda (exp)
+    (or (lit? exp) (varref? exp) (app? exp))))
 
-(define  eval-exp
-  (lambda (expr)
-    (cases exp expr
-      (lit-exp (datum) datum)
-      (var-exp (var) (apply-env init-env var))
-      (app-exp (rator rands)
+(define-record lit (datum))
+(define-record varref (var))
+(define-record lambda (formal body))
+(define-record app (rator rand))
+
+;(define-datatype exp exp?
+;  (lit-exp
+;   (datum number?))
+;  (var-exp
+;   (var symbol?))
+;  (app-exp
+;   (rator exp?)
+;   (rands list-of-exp?)))
+
+(define eval-exp
+  (lambda (exp)
+    (variant-case exp
+      (lit (datum) datum)
+      (varref (var) (apply-env init-env var))
+      (app (rator rands)
                (let ((proc (eval-exp rator))
                      (args (eval-rands rands)))
                  (apply-proc proc args)))
-      (else (eopl:error "Invalid AST: " expr)))))
+      (else (eopl:error "Invalid AST: " exp)))))
 
 (define eval-rands
   (lambda (rands)
@@ -96,9 +107,10 @@
       ((*) (* (car args) (cadr args)))
       ((add1) (+ (car args) 1))
       ((sub1) (- (car args) 1))
+      ((minus) (- 0 (car args))) ; Exercise 5.1.3
       (else (eopl:error "Invalid  prim-op name: " prim-op)))))
 
-(define prim-op-names '(+ - * add1 sub1))
+(define prim-op-names '(+ - * add1 sub1 minus))
 
 (define init-env
   (extend-env
@@ -111,17 +123,36 @@
     (eval-exp (parse x))))
 
 ; Exercise 5.1.1
-(define parse
+(define local-parse
   (lambda (datum)
     (cond
-      ((number? datum) (make-lit-exp datum))
-      ((symbol? datum) (make-var-exp datum))
-      ((pair? datum) (make-app-exp (parse (car datum)) (map parse (cdr datum))))
+      ((number? datum) ( datum))
+      ((symbol? datum) (make-varref datum))
+      ((pair? datum) (make-app (local-parse (car datum)) (map local-parse (cdr datum))))
       (else (eopl:error "parse: invalid concrete syntax")))))
 
-(define read-eval-print
+(define read-eval-print-0
   (lambda ()
-    (display "-->")
-    (write (eval-exp (parse (read))))
+    (write (eval-exp (local-parse (readline "-->"))))
     (newline)
-    (read-eval-print)))
+    (read-eval-print-0)))
+
+; Exercise 5.1.2
+(define parse character-string-parser)
+
+; lang eopl doesnt support standard scheme read-line. So using a different package readline.
+(define read-eval-print-1
+  (lambda ()
+    (write (eval-exp (parse (readline "-->"))))
+    (newline)
+    (read-eval-print-1)))
+
+; (read-eval-print-1)
+; *(add1(2), -(6,4))
+; 6
+
+; Exercise 5.1.3
+; Added above
+; (read-eval-print-1)
+; minus(+(minus(5), 9))
+; -4
