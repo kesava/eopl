@@ -54,9 +54,13 @@
           fail-value
           (vector-ref v index)))))
 
+(define number-or-list?
+  (lambda (datum)
+    (or (number? datum) (list? datum))))
+
 (define-datatype ff ff?
   (empty-ff)
-  (extended-ff (sym symbol?) (val number?) (next-ff ff?))
+  (extended-ff (sym symbol?) (val number-or-list?) (next-ff ff?))
   (extended-ff* (sym-list (list-of symbol?)) (var-list vector?) (next-ff ff?)))
 
 (define (create-empty-ff) (empty-ff))
@@ -99,15 +103,19 @@
       ((add1) (+ (car args) 1))
       ((sub1) (- (car args) 1))
       ((minus) (- 0 (car args))) ; Exercise 5.1.3
+      ((list) (list args)) ; Exercise 5.1.4
+      ((car) (car (list args))) ; Exercise 5.1.4
+      ((cdr) (cdr (list args))) ; exercise 5.1.4
+      ((cons) (cons (car args) (cdr args))) ; Exercise 5.1.4
       (else (eopl:error "Invalid  prim-op name: " prim-op)))))
 
-(define prim-op-names '(+ - * add1 sub1 minus))
+(define prim-op-names '(+ - * add1 sub1 minus list car cdr cons))
 
 (define init-env
   (extend-env
    prim-op-names
    (map make-prim-proc prim-op-names)
-   the-empty-env))
+   (extend-ff 'emptylist '() the-empty-env)))
 
 (define run
   (lambda (x)
