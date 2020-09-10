@@ -2,6 +2,7 @@
 (require "define-record.rkt")
 (require "string-parser.rkt")
 (require readline/readline)
+(require "util.rkt")
 
 (define and-l (lambda x 
     (if (null? x)
@@ -36,54 +37,7 @@
   (lambda (rands)
     (map eval-exp rands)))
 
-(define list-index
-  (lambda (s los)
-    (define helper
-      (lambda (los n)
-        (if (null? los)
-            -1
-            (if (equal? (car los) s)
-                n
-                (helper (cdr los) (+ 1 n))))))
-    (helper los 0)))
 
-(define ribassoc
-  (lambda (s los v fail-value)
-    (let ([index (list-index s los)])
-      (if (eq? index -1)
-          fail-value
-          (vector-ref v index)))))
-
-(define number-or-list?
-  (lambda (datum)
-    (or (number? datum) (list? datum))))
-
-(define-datatype ff ff?
-  (empty-ff)
-  (extended-ff (sym symbol?) (val number-or-list?) (next-ff ff?))
-  (extended-ff* (sym-list (list-of symbol?)) (var-list vector?) (next-ff ff?)))
-
-(define (create-empty-ff) (empty-ff))
-(define (extend-ff sym val f) (extended-ff sym val f))
-(define (extend-ff* sym-list val-list ff) (extended-ff* sym-list (list->vector val-list) ff))
-
-(define (apply-ff f symbol)
-  (cases ff f
-    (empty-ff () (eopl:error "Empty ff: no association for symbol" symbol))
-    (extended-ff (sym val next-ff)
-      (if (eq? sym symbol)
-        val
-        (apply-ff next-ff symbol)))
-    (extended-ff* (sym-list val-vector ff)
-                  (let ((val (ribassoc symbol sym-list val-vector '*fail*)))
-                    (if (eq? val '*fail*)
-                        (apply-ff ff symbol)
-                        val)))
-    (else (eopl:error "apply-ff: invalid finite function" f))))
-
-(define the-empty-env (create-empty-ff))
-(define extend-env extend-ff*)
-(define apply-env apply-ff)
 
 (define-datatype pproc pproc?
   (prim-proc (prim-op symbol?)))
@@ -91,7 +45,9 @@
 (define apply-proc
   (lambda (proc args)
     (cases pproc proc
-      (prim-proc (prim-op) (apply-prim-op prim-op args))
+      (prim-proc (prim-op) (begin
+                             ;(displayln prim-op "->" args)
+                             (apply-prim-op prim-op args)))
       (else (eopl:error "Invalid procedure: " proc)))))
 
 (define apply-prim-op
@@ -103,10 +59,10 @@
       ((add1) (+ (car args) 1))
       ((sub1) (- (car args) 1))
       ((minus) (- 0 (car args))) ; Exercise 5.1.3
-      ((list) (list args)) ; Exercise 5.1.4
-      ((car) (car (list args))) ; Exercise 5.1.4
-      ((cdr) (cdr (list args))) ; exercise 5.1.4
-      ((cons) (cons (car args) (cdr args))) ; Exercise 5.1.4
+      ((list) args) ; Exercise 5.1.4
+      ((car) (caar args)) ; Exercise 5.1.4
+      ((cdr) (cdar args)) ; exercise 5.1.4
+      ((cons) (cons (car args) (cadr args))) ; Exercise 5.1.4
       (else (eopl:error "Invalid  prim-op name: " prim-op)))))
 
 (define prim-op-names '(+ - * add1 sub1 minus list car cdr cons))
@@ -146,12 +102,9 @@
     (newline)
     (read-eval-print-1)))
 
+; Exercise 5.1.4
 ; (read-eval-print-1)
-; *(add1(2), -(6,4))
-; 6
-
-; Exercise 5.1.3
-; Added above
-; (read-eval-print-1)
-; minus(+(minus(5), 9))
-; -4
+; list(1,2,3)
+; (1 2 3)
+; car(cons(4, emptylist))
+; 4
