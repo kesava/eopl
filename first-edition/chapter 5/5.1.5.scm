@@ -31,7 +31,7 @@
       (app (rator rands)
                (let ((proc (eval-exp rator))
                      (args (eval-rands rands)))
-                 (apply-proc proc args)))
+                 (apply proc args)))
       (else (eopl:error "Invalid AST: " exp)))))
 
 (define eval-rands
@@ -51,9 +51,6 @@
 (define apply-prim-op
   (lambda (prim-op args)
     (case prim-op
-      ((+) (+ (car args) (cadr args)))
-      ((-) (- (car args) (cadr args)))
-      ((*) (* (car args) (cadr args)))
       ((add1) (+ (car args) 1))
       ((sub1) (- (car args) 1))
       ((minus) (- 0 (car args))) ; Exercise 5.1.3
@@ -63,12 +60,13 @@
       ((cons) (cons (car args) (cadr args))) ; Exercise 5.1.4
       (else (eopl:error "Invalid  prim-op name: " prim-op)))))
 
-(define prim-op-names '(+ - * add1 sub1 minus list car cdr cons))
+(define prim-op-names '(add1 sub1 minus list car cdr cons))
+(define native-op-names '(+ - *))
 
 (define init-env
   (extend-env
-   prim-op-names
-   (map make-prim-proc prim-op-names)
+   (append prim-op-names  (list '+ '- '*))
+   (append (map make-prim-proc prim-op-names) (list + - *))
    (extend-ff 'emptylist '() the-empty-env)))
 
 (define run
@@ -94,8 +92,8 @@
 (define parse character-string-parser)
 
 ; lang eopl doesnt support standard scheme read-line. So using a different package readline.
-(define read-eval-print-1
+(define repl
   (lambda ()
     (write (eval-exp (parse (readline "-->"))))
     (newline)
-    (read-eval-print-1)))
+    (repl)))
