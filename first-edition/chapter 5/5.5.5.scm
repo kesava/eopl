@@ -47,8 +47,6 @@
         (if (exists-env? env var)
             (cell-set! (apply-env env var) (eval-exp exp env))
             (extend-env (list var) (list (make-cell (eval-exp exp env))) env)))
-        ;(displayln "var: " (make-cell (make-varref var)) " -> exp: " (eval-exp exp env) " -- env ---> " (apply-env env var)))
-        ;(extend-ff (make-cell (make-varref var)) (eval-exp exp env) env))
       (proc (formals body)
             (make-closure formals body env))
       (begin (exp1 exp2)
