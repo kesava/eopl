@@ -57,6 +57,19 @@
 (define the-empty-env (create-empty-ff))
 (define extend-env extend-ff*)
 (define apply-env apply-ff)
+(define (exists-env? f symbol)
+  (cases ff f
+    (empty-ff () #f)
+    (extended-ff (sym val next-ff)
+                 (if (eq? sym symbol)
+                     #t
+                     (exists-env? next-ff symbol)))
+    (extended-ff* (sym-list val-vector ff)
+                  (let ((val (ribassoc symbol sym-list val-vector '*fail*)))
+                    (if (eq? val '*fail*)
+                        (exists-env? ff symbol)
+                        #t)))
+    (else #f)))
 
 (define number-or-list?
   (lambda (datum)
