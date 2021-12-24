@@ -147,14 +147,14 @@ in begin
 ; lang eopl doesnt support standard scheme read-line. So using a different package readline.
 (define repl-helper
   (lambda (env)
-    (let ((x (eval-exp (syntax-expand (parse (readline "-->"))) env)))
-      (if (ff? x)
+    (let ((new-env (eval-exp (syntax-expand (parse (readline "-->"))) env)))
+      (if (ff? new-env)
           (begin
             ;(display x)
             ;(newline)
-            (repl-helper x))
+            (repl-helper new-env))
           (begin
-            (write x)
+            (write new-env)
             (newline)
             (repl-helper env))))))
 
