@@ -87,7 +87,7 @@
 (define apply-primitive
   (lambda (prim args)
     (cases primitive prim
-      (add-prim () (+ (car args) (cadr args)))
+      (add-prim () (if (> (length args) 2) (eopl:error "+ takes only two args") (+ (car args) (cadr args))))
       (subtract-prim () (- (car args) (cadr args)))
       (minus-prim () (- 0 (car args)))
       (mult-prim () (* (car args) (cadr args)))
