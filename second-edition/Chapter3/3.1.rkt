@@ -55,6 +55,7 @@
   (car-prim)
   (cdr-prim)
   (cons-prim)
+  (setcar-prim)
   (incr-prim)
   (decr-prim)
   (print-prim))
@@ -92,6 +93,7 @@
       (mult-prim () (* (car args) (cadr args)))
       (list-prim () args)
       (car-prim () (caar args))
+      (setcar-prim () (cons (car args) (cdadr args)))
       (cdr-prim () (cdar args))
       (cons-prim () (cons (car args) (cadr args)))
       (incr-prim () (+ (car args) 1))
@@ -125,6 +127,7 @@
     (primitive ("car") car-prim)
     (primitive ("cdr") cdr-prim)
     (primitive ("cons") cons-prim)
+    (primitive ("setcar") setcar-prim)
     (primitive ("minus") minus-prim)
     (primitive ("add1") incr-prim)
     (primitive ("sub1") decr-prim)))
@@ -146,3 +149,5 @@
                          scanner-spec-3-1
                          grammar-3-1)))
 
+; setcar(1, cons(4, cons(8, emptylist)))
+; (1 8)
